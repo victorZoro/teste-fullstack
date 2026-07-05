@@ -8,13 +8,22 @@ using System.Text;
 
 namespace Parking.Api.Controllers
 {
+    public record ImportRowError(int Linha, string Motivo, string? DadosRaw);
+
     [ApiController]
     [Route("api/import")]
     public class ImportController : ControllerBase
     {
         private readonly AppDbContext _db;
         private readonly PlacaService _placa;
-        public ImportController(AppDbContext db, PlacaService placa) { _db = db; _placa = placa; }
+        private readonly ILogger<ImportController> _logger;
+
+        public ImportController(AppDbContext db, PlacaService placa, ILogger<ImportController> logger) 
+        { 
+            _db = db; 
+            _placa = placa; 
+            _logger = logger;
+        }
 
         [HttpPost("csv")]
         public async Task<IActionResult> ImportCsv()
@@ -22,12 +31,15 @@ namespace Parking.Api.Controllers
             if (!Request.HasFormContentType || Request.Form.Files.Count == 0)
                 return BadRequest("Envie um arquivo CSV no campo 'file'.");
 
+            _logger.LogInformation("Iniciando importação de CSV.");
+
             var file = Request.Form.Files[0];
             using var s = file.OpenReadStream();
             using var r = new StreamReader(s, Encoding.UTF8);
 
             int linha = 0, processados = 0, inseridos = 0;
-            var erros = new List<string>();
+            var erros = new List<ImportRowError>();
+            
             string? header = await r.ReadLineAsync(); // consome cabeçalho
             while (!r.EndOfStream)
             {
@@ -36,10 +48,12 @@ namespace Parking.Api.Controllers
                 if (string.IsNullOrWhiteSpace(raw)) continue;
                 processados++;
 
-                // CSV simples separado por vírgula: placa,modelo,ano,cliente_identificador,cliente_nome,cliente_telefone,cliente_endereco,mensalista,valor_mensalidade
-                var cols = raw.Split(',');
                 try
                 {
+                    // CSV simples separado por vírgula: placa,modelo,ano,cliente_identificador,cliente_nome,cliente_telefone,cliente_endereco,mensalista,valor_mensalidade
+                    var cols = raw.Split(',');
+                    if (cols.Length < 9) throw new Exception("Formato inválido ou colunas insuficientes.");
+
                     var placa = _placa.Sanitizar(cols[0]);
                     var modelo = cols[1];
                     int? ano = int.TryParse(cols[2], out var _ano) ? _ano : null;
@@ -68,9 +82,16 @@ namespace Parking.Api.Controllers
                 }
                 catch (Exception ex)
                 {
-                    erros.Add($"Linha {linha}: {ex.Message} (raw='{raw}')");
+                    erros.Add(new ImportRowError(linha, ex.Message, raw));
+                    
+                    if (erros.Count <= 10)
+                    {
+                        _logger.LogWarning("Erro na linha {Linha} ao processar CSV. Motivo: {Motivo}", linha, ex.Message);
+                    }
                 }
             }
+
+            _logger.LogInformation("Importação CSV finalizada. Processados: {Processados}, Inseridos: {Inseridos}, Erros: {Erros}", processados, inseridos, erros.Count);
 
             return Ok(new { processados, inseridos, erros });
         }
