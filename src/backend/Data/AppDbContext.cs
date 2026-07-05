@@ -23,11 +23,11 @@ namespace Parking.Api.Data
                 e.ToTable("cliente", "public");
                 e.HasKey(x => x.Id);
                 e.Property(x => x.Id).HasColumnName("id");
-                e.Property(x => x.Nome).HasColumnName("nome").IsRequired().HasMaxLength(200);
-                e.Property(x => x.Telefone).HasColumnName("telefone").HasMaxLength(20);
+                e.Property(x => x.Nome).HasColumnName("nome").IsRequired().HasMaxLength(100);
+                e.Property(x => x.Telefone).HasColumnName("telefone").IsRequired().HasMaxLength(11);
                 e.Property(x => x.Endereco).HasColumnName("endereco").HasMaxLength(400);
                 e.Property(x => x.Mensalista).HasColumnName("mensalista");
-                e.Property(x => x.ValorMensalidade).HasColumnName("valor_mensalidade");
+                e.Property(x => x.ValorMensalidade).HasColumnName("valor_mensalidade").HasColumnType("numeric(8,2)");
                 e.Property(x => x.DataInclusao).HasColumnName("data_inclusao");
                 e.HasIndex(x => new { x.Nome, x.Telefone }).IsUnique(true);
                 e.HasMany(x => x.Veiculos).WithOne(x => x.Cliente!).HasForeignKey(x => x.ClienteId);

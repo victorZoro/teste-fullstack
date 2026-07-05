@@ -10,13 +10,15 @@ drop table if exists "public"."cliente" cascade;
 
 create table "public"."cliente"(
   id uuid primary key default uuid_generate_v4(),
-  nome text not null,
-  telefone varchar(20),
+  nome varchar(100) not null,
+  telefone varchar(11) not null,
   endereco varchar(400),
   mensalista boolean not null default false,
-  valor_mensalidade numeric(12,2),
+  valor_mensalidade numeric(8,2),
   data_inclusao timestamp not null default now()
 );
+
+create unique index ux_cliente_nome_telefone on "public"."cliente"(nome, telefone);
 
 create table "public"."veiculo"(
   id uuid primary key default uuid_generate_v4(),
