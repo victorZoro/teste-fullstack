@@ -83,21 +83,29 @@ export default function ClientesPage(){
           <table>
             <thead><tr><th>Nome</th><th>Telefone</th><th>Mensalista</th><th style={{ textAlign: 'center' }}>Ações</th></tr></thead>
             <tbody>
-              {q.data.itens.map(c=>(
-                <tr key={c.id}>
-                  <td>{c.nome}</td>
-                  <td>{formatarTelefone(c.telefone)}</td>
-                  <td>{c.mensalista? 'Sim':'Não'}</td>
-                  <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button className="btn-ghost" onClick={() => { setClienteEmEdicao(c); setIsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <EditIcon fontSize="small" /> Editar
-                    </button>
-                    <button className="btn-ghost" onClick={() => setClienteParaExcluir(c)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
-                      <DeleteIcon fontSize="small" /> Excluir
-                    </button>
+              {q.data?.itens?.length === 0 ? (
+                <tr>
+                  <td colSpan="4" style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
+                    Nenhum cliente encontrado.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                q.data?.itens?.map(c=>(
+                  <tr key={c.id}>
+                    <td>{c.nome}</td>
+                    <td>{formatarTelefone(c.telefone)}</td>
+                    <td>{c.mensalista? 'Sim':'Não'}</td>
+                    <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <button className="btn-ghost" onClick={() => { setClienteEmEdicao(c); setIsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <EditIcon fontSize="small" /> Editar
+                      </button>
+                      <button className="btn-ghost" onClick={() => setClienteParaExcluir(c)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
+                        <DeleteIcon fontSize="small" /> Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         )}

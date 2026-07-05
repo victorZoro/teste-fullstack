@@ -82,22 +82,30 @@ export default function VeiculosPage(){
           <table>
             <thead><tr><th>Placa</th><th>Modelo</th><th>Ano</th><th>Id do Cliente</th><th style={{ textAlign: 'center' }}>Ações</th></tr></thead>
             <tbody>
-              {veiculos.data?.map(v=>(
-                <tr key={v.id}>
-                  <td>{v.placa}</td>
-                  <td>{v.modelo}</td>
-                  <td>{v.ano ?? '-'}</td>
-                  <td>{v.clienteId}</td>
-                  <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
-                    <button className="btn-ghost" onClick={() => setVeiculoEmEdicao(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <EditIcon fontSize="small" /> Editar
-                    </button>
-                    <button className="btn-ghost" onClick={() => setVeiculoParaExcluir(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
-                      <DeleteIcon fontSize="small" /> Excluir
-                    </button>
+              {!veiculos.data || veiculos.data.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '16px', color: '#6b7280' }}>
+                    Nenhum veículo encontrado.
                   </td>
                 </tr>
-              ))}
+              ) : (
+                veiculos.data.map(v=>(
+                  <tr key={v.id}>
+                    <td>{v.placa}</td>
+                    <td>{v.modelo}</td>
+                    <td>{v.ano ?? '-'}</td>
+                    <td>{v.clienteId}</td>
+                    <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                      <button className="btn-ghost" onClick={() => setVeiculoEmEdicao(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <EditIcon fontSize="small" /> Editar
+                      </button>
+                      <button className="btn-ghost" onClick={() => setVeiculoParaExcluir(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
+                        <DeleteIcon fontSize="small" /> Excluir
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
         )}
