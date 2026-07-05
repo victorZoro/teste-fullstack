@@ -17,6 +17,9 @@ builder.Services.AddDbContext<AppDbContext>(opt =>
 
 builder.Services.AddScoped<PlacaService>();
 builder.Services.AddScoped<FaturamentoService>();
+builder.Services.AddScoped<ClienteService>();
+builder.Services.AddScoped<VeiculoService>();
+builder.Services.AddScoped<ImportService>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();

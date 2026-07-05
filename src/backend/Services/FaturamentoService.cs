@@ -10,7 +10,7 @@ namespace Parking.Api.Services
         private readonly AppDbContext _db;
         public FaturamentoService(AppDbContext db) => _db = db;
 
-        public async Task<List<Fatura>> GerarAsync(string competencia, CancellationToken ct = default)
+        public async Task<ServiceResult<List<Fatura>>> GerarAsync(string competencia, CancellationToken ct = default)
         {
             // competencia formato yyyy-MM
             var part = competencia.Split('-');
@@ -76,7 +76,30 @@ namespace Parking.Api.Services
             }
 
             await _db.SaveChangesAsync(ct);
-            return criadas;
+            return ServiceResult<List<Fatura>>.Ok(criadas);
+        }
+
+        public async Task<ServiceResult<object>> ListAsync(string? competencia = null)
+        {
+            var q = _db.Faturas.AsQueryable();
+            if (!string.IsNullOrWhiteSpace(competencia)) q = q.Where(f => f.Competencia == competencia);
+            var list = await q
+                .OrderByDescending(f => f.CriadaEm)
+                .Select(f => new {
+                    f.Id, f.Competencia, f.ClienteId, f.Valor, f.CriadaEm,
+                    qtdVeiculos = _db.FaturasVeiculos.Count(x => x.FaturaId == f.Id)
+                })
+                .ToListAsync();
+            return ServiceResult<object>.Ok(list);
+        }
+
+        public async Task<ServiceResult<List<string>>> GetPlacasAsync(Guid id)
+        {
+            var placas = await _db.FaturasVeiculos
+                .Where(x => x.FaturaId == id)
+                .Join(_db.Veiculos, fv => fv.VeiculoId, v => v.Id, (fv, v) => v.Placa)
+                .ToListAsync();
+            return ServiceResult<List<string>>.Ok(placas);
         }
     }
 }
