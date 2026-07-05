@@ -35,6 +35,10 @@ namespace Parking.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] ClienteCreateDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Nome)) return BadRequest("O Nome é obrigatório.");
+            if (string.IsNullOrWhiteSpace(dto.Telefone)) return BadRequest("O Telefone é obrigatório.");
+            if (dto.Mensalista && !dto.ValorMensalidade.HasValue) return BadRequest("O Valor da Mensalidade é obrigatório para clientes mensalistas.");
+
             var existe = await _db.Clientes.AnyAsync(c => c.Nome == dto.Nome && c.Telefone == dto.Telefone);
             if (existe) return Conflict("Cliente já existe.");
 
@@ -61,6 +65,10 @@ namespace Parking.Api.Controllers
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] ClienteUpdateDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Nome)) return BadRequest("O Nome é obrigatório.");
+            if (string.IsNullOrWhiteSpace(dto.Telefone)) return BadRequest("O Telefone é obrigatório.");
+            if (dto.Mensalista && !dto.ValorMensalidade.HasValue) return BadRequest("O Valor da Mensalidade é obrigatório para clientes mensalistas.");
+
             var c = await _db.Clientes.FindAsync(id);
             if (c == null) return NotFound();
 

@@ -28,6 +28,9 @@ namespace Parking.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> Create([FromBody] VeiculoCreateDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Placa)) return BadRequest("A Placa é obrigatória.");
+            if (dto.ClienteId == Guid.Empty) return BadRequest("O Cliente é obrigatório.");
+
             var placa = _placa.Sanitizar(dto.Placa);
             if (!_placa.EhValida(placa)) return BadRequest("Placa inválida.");
             if (await _db.Veiculos.AnyAsync(v => v.Placa == placa)) return Conflict("Placa já existe.");
@@ -68,6 +71,9 @@ namespace Parking.Api.Controllers
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] VeiculoUpdateDto dto)
         {
+            if (string.IsNullOrWhiteSpace(dto.Placa)) return BadRequest("A Placa é obrigatória.");
+            if (dto.ClienteId == Guid.Empty) return BadRequest("O Cliente é obrigatório.");
+
             var v = await _db.Veiculos.FindAsync(id);
             if (v == null) return NotFound();
             var placa = _placa.Sanitizar(dto.Placa);
