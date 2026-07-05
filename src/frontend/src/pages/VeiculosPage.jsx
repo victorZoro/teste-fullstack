@@ -1,7 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPut, apiDelete } from '../api'
+import toast from 'react-hot-toast'
 import VeiculoModalForm from '../components/VeiculoModalForm'
+import ConfirmModal from '../components/ConfirmModal'
 
 export default function VeiculosPage(){
   const qc = useQueryClient()
@@ -10,6 +12,8 @@ export default function VeiculosPage(){
   const veiculos = useQuery({ queryKey:['veiculos', clienteId], queryFn:() => apiGet(`/api/veiculos${clienteId?`?clienteId=${clienteId}`:''}`) })
   const [form, setForm] = useState({ placa:'', modelo:'', ano:'', clienteId:'' })
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [veiculoEmEdicao, setVeiculoEmEdicao] = useState(null)
+  const [veiculoParaExcluir, setVeiculoParaExcluir] = useState(null)
 
   const create = useMutation({
     mutationFn: (data) => apiPost('/api/veiculos', data),
@@ -21,11 +25,16 @@ export default function VeiculosPage(){
   })
   const remover = useMutation({
     mutationFn: (id) => apiDelete(`/api/veiculos/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey:['veiculos'] })
+    onSuccess: () => {
+      handleSuccess("Veículo excluído com sucesso!")
+      setVeiculoParaExcluir(null)
+    }
   })
-  const handleSuccess = () => qc.invalidateQueries({
-    queryKey:['veiculos'] 
-  })
+  
+  const handleSuccess = (msg) => {
+    qc.invalidateQueries({ queryKey:['veiculos'] })
+    if (msg) toast.success(msg)
+  }
   useEffect(()=>{
     if(clientes.data?.itens?.length && !clienteId){
       setClienteId(clientes.data.itens[0].id)
@@ -49,10 +58,15 @@ export default function VeiculosPage(){
         </div>
       </div>
 
-      {isModalOpen && (
+      {(isModalOpen || veiculoEmEdicao) && (
         <VeiculoModalForm 
           clienteSelecionado={clienteId}
-          onClose={() => setIsModalOpen(false)} 
+          veiculoEmEdicao={veiculoEmEdicao}
+          clientes={clientes.data?.itens || []}
+          onClose={() => {
+            setIsModalOpen(false);
+            setVeiculoEmEdicao(null);
+          }} 
           onSuccess={handleSuccess} 
         />
       )}
@@ -70,21 +84,30 @@ export default function VeiculosPage(){
                   <td>{v.ano ?? '-'}</td>
                   <td>{v.clienteId}</td>
                   <td style={{display:'flex', gap:8}}>
-                    <button className="btn-ghost" onClick={()=>{
-                      const novoModelo = prompt('Novo modelo', v.modelo || '')
-                      if(novoModelo===null) return
-                      // TODO: trocar cliente via select modal (deixo simples aqui)
-                      update.mutate({ id: v.id, data:{ placa: v.placa, modelo: novoModelo, ano: v.ano, clienteId } })
-                    }}>Editar</button>
-                    <button className="btn-ghost" onClick={()=>remover.mutate(v.id)}>Excluir</button>
+                    <button className="btn-ghost" onClick={() => setVeiculoEmEdicao(v)}>Editar</button>
+                    <button className="btn-ghost" onClick={() => setVeiculoParaExcluir(v)}>Excluir</button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
-        <p className="note">TODO: permitir troca de cliente na edição e garantir atualização sem recarregar a página (React Query já invalida a lista).</p>
       </div>
+
+      <ConfirmModal
+          isOpen={!!veiculoParaExcluir}
+          title="Excluir Veículo"
+          message={`Tem certeza que deseja excluir o veículo placa ${veiculoParaExcluir?.placa}? Esta ação não pode ser desfeita.`}
+          onConfirm={() => remover.mutate(veiculoParaExcluir.id)}
+          onCancel={() => {
+              setVeiculoParaExcluir(null)
+              remover.reset()
+          }}
+          isPending={remover.isPending}
+          confirmText="Excluir"
+          isDestructive={true}
+          errorMsg={remover.error?.message}
+      />
     </div>
   )
 }
