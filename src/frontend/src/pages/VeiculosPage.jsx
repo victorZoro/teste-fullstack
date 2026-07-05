@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiPut, apiDelete } from '../api'
+import VeiculoModalForm from '../components/VeiculoModalForm'
 
 export default function VeiculosPage(){
   const qc = useQueryClient()
@@ -8,6 +9,7 @@ export default function VeiculosPage(){
   const clientes = useQuery({ queryKey:['clientes-mini'], queryFn:() => apiGet('/api/clientes?pagina=1&tamanho=100') })
   const veiculos = useQuery({ queryKey:['veiculos', clienteId], queryFn:() => apiGet(`/api/veiculos${clienteId?`?clienteId=${clienteId}`:''}`) })
   const [form, setForm] = useState({ placa:'', modelo:'', ano:'', clienteId:'' })
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const create = useMutation({
     mutationFn: (data) => apiPost('/api/veiculos', data),
@@ -21,7 +23,9 @@ export default function VeiculosPage(){
     mutationFn: (id) => apiDelete(`/api/veiculos/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey:['veiculos'] })
   })
-
+  const handleSuccess = () => qc.invalidateQueries({
+    queryKey:['veiculos'] 
+  })
   useEffect(()=>{
     if(clientes.data?.itens?.length && !clienteId){
       setClienteId(clientes.data.itens[0].id)
@@ -31,7 +35,10 @@ export default function VeiculosPage(){
 
   return (
     <div>
-      <h2>Veículos</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ margin: 0 }}>Veículos</h2>
+        <button onClick={() => setIsModalOpen(true)}>+ Novo Veículo</button>
+      </div>
 
       <div className="section">
         <div style={{display:'flex', gap:10, alignItems:'center'}}>
@@ -42,17 +49,13 @@ export default function VeiculosPage(){
         </div>
       </div>
 
-      <h3>Novo veículo</h3>
-      <div className="section">
-        <div className="grid grid-4">
-          <input placeholder="Placa" value={form.placa} onChange={e=>setForm({...form, placa:e.target.value})}/>
-          <input placeholder="Modelo" value={form.modelo} onChange={e=>setForm({...form, modelo:e.target.value})}/>
-          <input placeholder="Ano" value={form.ano} onChange={e=>setForm({...form, ano:e.target.value})}/>
-          <button onClick={()=>create.mutate({
-            placa: form.placa, modelo: form.modelo, ano: form.ano? Number(form.ano): null, clienteId: form.clienteId || clienteId
-          })}>Salvar</button>
-        </div>
-      </div>
+      {isModalOpen && (
+        <VeiculoModalForm 
+          clienteSelecionado={clienteId}
+          onClose={() => setIsModalOpen(false)} 
+          onSuccess={handleSuccess} 
+        />
+      )}
 
       <h3 style={{marginTop:16}}>Lista</h3>
       <div className="section">
