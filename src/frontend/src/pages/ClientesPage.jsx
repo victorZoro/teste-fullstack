@@ -1,7 +1,9 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiDelete } from '../api'
+import toast from 'react-hot-toast'
 import ClienteModalForm from '../components/ClienteModalForm.jsx'
+import ConfirmModal from '../components/ConfirmModal.jsx'
 
 export default function ClientesPage(){
   const qc = useQueryClient()
@@ -9,6 +11,8 @@ export default function ClientesPage(){
   const [mensalista, setMensalista] = useState('all')
   const [form, setForm] = useState({ nome:'', telefone:'', endereco:'', mensalista:false, valorMensalidade:'' })
   const [isModalOpen, setIsModalOpen] = useState(false)
+  const [clienteEmEdicao, setClienteEmEdicao] = useState(null)
+  const [clienteParaExcluir, setClienteParaExcluir] = useState(null)
   
   const q = useQuery({
     queryKey:['clientes', filtro, mensalista],
@@ -22,18 +26,22 @@ export default function ClientesPage(){
 
   const remover = useMutation({
     mutationFn: (id) => apiDelete(`/api/clientes/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey:['clientes'] })
+    onSuccess: () => {
+      handleSuccess("Cliente excluído com sucesso!")
+      setClienteParaExcluir(null)
+    }
   })
 
-  const handleSuccess = () => qc.invalidateQueries({
-    queryKey:['clientes']
-  })
+  const handleSuccess = (msg) => {
+    qc.invalidateQueries({ queryKey:['clientes'] })
+    if (msg) toast.success(msg)
+  }
 
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ margin: 0 }}>Clientes</h2>
-        <button onClick={() => setIsModalOpen(true)}>Novo Cliente</button>
+        <button onClick={() => { setClienteEmEdicao(null); setIsModalOpen(true); }}>Novo Cliente</button>
       </div>
 
       <div className="section">
@@ -50,6 +58,7 @@ export default function ClientesPage(){
 
       {isModalOpen && (
           <ClienteModalForm
+              clienteEmEdicao={clienteEmEdicao}
               onClose={() => setIsModalOpen(false)}
               onSuccess={handleSuccess}
           />
@@ -66,8 +75,9 @@ export default function ClientesPage(){
                   <td>{c.nome}</td>
                   <td>{c.telefone}</td>
                   <td>{c.mensalista? 'Sim':'Não'}</td>
-                  <td>
-                    <button className="btn-ghost" onClick={()=>remover.mutate(c.id)}>Excluir</button>
+                  <td style={{ display: 'flex', gap: '8px' }}>
+                    <button className="btn-ghost" onClick={() => { setClienteEmEdicao(c); setIsModalOpen(true); }}>Editar</button>
+                    <button className="btn-ghost" onClick={() => setClienteParaExcluir(c)}>Excluir</button>
                   </td>
                 </tr>
               ))}
@@ -75,6 +85,21 @@ export default function ClientesPage(){
           </table>
         )}
       </div>
+
+      <ConfirmModal
+          isOpen={!!clienteParaExcluir}
+          title="Excluir Cliente"
+          message={`Tem certeza que deseja excluir o cliente ${clienteParaExcluir?.nome}? Esta ação não pode ser desfeita.`}
+          onConfirm={() => remover.mutate(clienteParaExcluir.id)}
+          onCancel={() => {
+              setClienteParaExcluir(null)
+              remover.reset()
+          }}
+          isPending={remover.isPending}
+          confirmText="Excluir"
+          isDestructive={true}
+          errorMsg={remover.error?.message}
+      />
     </div>
   )
 }
