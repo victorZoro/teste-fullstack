@@ -32,10 +32,30 @@ namespace Parking.Api.Controllers
             if (!_placa.EhValida(placa)) return BadRequest("Placa inválida.");
             if (await _db.Veiculos.AnyAsync(v => v.Placa == placa)) return Conflict("Placa já existe.");
 
-            var v = new Veiculo { Placa = placa, Modelo = dto.Modelo, Ano = dto.Ano, ClienteId = dto.ClienteId };
-            _db.Veiculos.Add(v);
-            await _db.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetById), new { id = v.Id }, v);
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                var v = new Veiculo { Placa = placa, Modelo = dto.Modelo, Ano = dto.Ano, ClienteId = dto.ClienteId };
+                _db.Veiculos.Add(v);
+
+                var historico = new VeiculoClienteHistorico 
+                { 
+                    VeiculoId = v.Id, 
+                    ClienteId = v.ClienteId, 
+                    DataInicio = v.DataInclusao 
+                };
+                _db.VeiculoClienteHistoricos.Add(historico);
+
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                return CreatedAtAction(nameof(GetById), new { id = v.Id }, v);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         [HttpGet("{id:guid}")]
@@ -45,7 +65,6 @@ namespace Parking.Api.Controllers
             return v == null ? NotFound() : Ok(v);
         }
 
-        // BUG propositado: não invalida/atualiza nada no front; candidato deve ajustar no front (React Query) ou aqui (retornar entidade e orientar)
         [HttpPut("{id:guid}")]
         public async Task<IActionResult> Update(Guid id, [FromBody] VeiculoUpdateDto dto)
         {
@@ -55,12 +74,45 @@ namespace Parking.Api.Controllers
             if (!_placa.EhValida(placa)) return BadRequest("Placa inválida.");
             if (await _db.Veiculos.AnyAsync(x => x.Placa == placa && x.Id != id)) return Conflict("Placa já existe.");
 
-            v.Placa = placa;
-            v.Modelo = dto.Modelo;
-            v.Ano = dto.Ano;
-            v.ClienteId = dto.ClienteId; // troca de cliente permitida
-            await _db.SaveChangesAsync();
-            return Ok(v);
+            using var transaction = await _db.Database.BeginTransactionAsync();
+            try
+            {
+                if (v.ClienteId != dto.ClienteId)
+                {
+                    var historicoAtual = await _db.VeiculoClienteHistoricos
+                        .FirstOrDefaultAsync(h => h.VeiculoId == id && h.DataFim == null);
+                    
+                    var dataMudanca = DateTime.UtcNow;
+
+                    if (historicoAtual != null)
+                    {
+                        historicoAtual.DataFim = dataMudanca;
+                    }
+
+                    var novoHistorico = new VeiculoClienteHistorico
+                    {
+                        VeiculoId = id,
+                        ClienteId = dto.ClienteId,
+                        DataInicio = dataMudanca
+                    };
+                    _db.VeiculoClienteHistoricos.Add(novoHistorico);
+                }
+
+                v.Placa = placa;
+                v.Modelo = dto.Modelo;
+                v.Ano = dto.Ano;
+                v.ClienteId = dto.ClienteId;
+                
+                await _db.SaveChangesAsync();
+                await transaction.CommitAsync();
+                
+                return Ok(v);
+            }
+            catch
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
         }
 
         [HttpDelete("{id:guid}")]
