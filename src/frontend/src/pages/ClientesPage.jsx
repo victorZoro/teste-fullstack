@@ -1,13 +1,15 @@
 import React, { useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { apiGet, apiPost, apiDelete } from '../api'
+import ClienteModalForm from '../components/ClienteModalForm.jsx'
 
 export default function ClientesPage(){
   const qc = useQueryClient()
   const [filtro, setFiltro] = useState('')
   const [mensalista, setMensalista] = useState('all')
   const [form, setForm] = useState({ nome:'', telefone:'', endereco:'', mensalista:false, valorMensalidade:'' })
-
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  
   const q = useQuery({
     queryKey:['clientes', filtro, mensalista],
     queryFn:() => apiGet(`/api/clientes?pagina=1&tamanho=20&filtro=${encodeURIComponent(filtro)}&mensalista=${mensalista}`)
@@ -23,9 +25,16 @@ export default function ClientesPage(){
     onSuccess: () => qc.invalidateQueries({ queryKey:['clientes'] })
   })
 
+  const handleSuccess = () => qc.invalidateQueries({
+    queryKey:['clientes']
+  })
+
   return (
     <div>
-      <h2>Clientes</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+        <h2 style={{ margin: 0 }}>Clientes</h2>
+        <button onClick={() => setIsModalOpen(true)}>Novo Cliente</button>
+      </div>
 
       <div className="section">
         <div className="grid grid-3">
@@ -39,24 +48,12 @@ export default function ClientesPage(){
         </div>
       </div>
 
-      <h3>Novo cliente</h3>
-      <div className="section">
-        <div className="grid grid-4">
-          <input placeholder="Nome" value={form.nome} onChange={e=>setForm({...form, nome:e.target.value})}/>
-          <input placeholder="Telefone" value={form.telefone} onChange={e=>setForm({...form, telefone:e.target.value})}/>
-          <input placeholder="Endereço" value={form.endereco} onChange={e=>setForm({...form, endereco:e.target.value})}/>
-          <label style={{display:'flex', alignItems:'center', gap:8}}>
-            <input type="checkbox" checked={form.mensalista} onChange={e=>setForm({...form, mensalista:e.target.checked})}/> Mensalista
-          </label>
-          <input placeholder="Valor mensalidade" value={form.valorMensalidade} onChange={e=>setForm({...form, valorMensalidade:e.target.value})}/>
-          <div/>
-          <div/>
-          <button onClick={()=>create.mutate({
-            nome:form.nome, telefone:form.telefone, endereco:form.endereco,
-            mensalista:form.mensalista, valorMensalidade:form.valorMensalidade? Number(form.valorMensalidade): null
-          })}>Salvar</button>
-        </div>
-      </div>
+      {isModalOpen && (
+          <ClienteModalForm
+              onClose={() => setIsModalOpen(false)}
+              onSuccess={handleSuccess}
+          />
+      )}
 
       <h3 style={{marginTop:16}}>Lista</h3>
       <div className="section">
