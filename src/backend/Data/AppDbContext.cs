@@ -12,6 +12,7 @@ namespace Parking.Api.Data
         public DbSet<Veiculo> Veiculos => Set<Veiculo>();
         public DbSet<Fatura> Faturas => Set<Fatura>();
         public DbSet<FaturaVeiculo> FaturasVeiculos => Set<FaturaVeiculo>();
+        public DbSet<VeiculoClienteHistorico> VeiculoClienteHistoricos => Set<VeiculoClienteHistorico>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -65,6 +66,20 @@ namespace Parking.Api.Data
                 e.HasKey(x => new { x.FaturaId, x.VeiculoId });
                 e.Property(x => x.FaturaId).HasColumnName("fatura_id");
                 e.Property(x => x.VeiculoId).HasColumnName("veiculo_id");
+            });
+
+            modelBuilder.Entity<VeiculoClienteHistorico>(e =>
+            {
+                e.ToTable("veiculo_cliente_historico", "public");
+                e.HasKey(x => x.Id);
+                e.Property(x => x.Id).HasColumnName("id");
+                e.Property(x => x.VeiculoId).HasColumnName("veiculo_id");
+                e.Property(x => x.ClienteId).HasColumnName("cliente_id");
+                e.Property(x => x.DataInicio).HasColumnName("data_inicio");
+                e.Property(x => x.DataFim).HasColumnName("data_fim");
+                
+                e.HasOne(x => x.Veiculo).WithMany().HasForeignKey(x => x.VeiculoId);
+                e.HasOne(x => x.Cliente).WithMany().HasForeignKey(x => x.ClienteId);
             });
         }
     }

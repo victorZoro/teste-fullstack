@@ -4,6 +4,7 @@ create extension if not exists "uuid-ossp";
 
 drop table if exists "public"."fatura_veiculo" cascade;
 drop table if exists "public"."fatura" cascade;
+drop table if exists "public"."veiculo_cliente_historico" cascade;
 drop table if exists "public"."veiculo" cascade;
 drop table if exists "public"."cliente" cascade;
 
@@ -25,6 +26,17 @@ create table "public"."veiculo"(
   data_inclusao timestamp not null default now(),
   cliente_id uuid not null references "public"."cliente"(id)
 );
+
+create table "public"."veiculo_cliente_historico"(
+  id uuid primary key default uuid_generate_v4(),
+  veiculo_id uuid not null references "public"."veiculo"(id) on delete cascade,
+  cliente_id uuid not null references "public"."cliente"(id),
+  data_inicio timestamp not null,
+  data_fim timestamp null
+);
+
+create index idx_veiculo_historico_veiculo on "public"."veiculo_cliente_historico"(veiculo_id);
+create index idx_veiculo_historico_cliente on "public"."veiculo_cliente_historico"(cliente_id);
 
 create table "public"."fatura"(
   id uuid primary key default uuid_generate_v4(),
@@ -68,3 +80,15 @@ update "public"."veiculo" set cliente_id='22222222-2222-2222-2222-222222222222'
 where placa='ABC1D23';
 update "public"."veiculo" set data_inclusao='2025-08-18' where placa='ABC1D23';
 -- BUG atual de faturamento usa o dono ATUAL (Maria) para competência 2025-08; candidato deve corrigir para foto na data de corte.
+
+-- Popular histórico inicial
+insert into "public"."veiculo_cliente_historico" (veiculo_id, cliente_id, data_inicio, data_fim)
+select id, cliente_id, data_inclusao, null
+from "public"."veiculo";
+
+-- Ajustar histórico para simular a troca corretamente no seed:
+update "public"."veiculo_cliente_historico" set cliente_id='11111111-1111-1111-1111-111111111111', data_inicio='2025-08-01', data_fim='2025-08-18'
+where veiculo_id=(select id from "public"."veiculo" where placa='ABC1D23');
+
+insert into "public"."veiculo_cliente_historico" (veiculo_id, cliente_id, data_inicio, data_fim)
+values ((select id from "public"."veiculo" where placa='ABC1D23'), '22222222-2222-2222-2222-222222222222', '2025-08-18', null);
