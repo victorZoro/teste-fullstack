@@ -2,6 +2,7 @@ import React from 'react'
 import { createRoot } from 'react-dom/client'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Routes, Route, Link } from 'react-router-dom'
+import { Toaster } from 'react-hot-toast'
 import ClientesPage from './pages/ClientesPage'
 import VeiculosPage from './pages/VeiculosPage'
 import FaturamentoPage from './pages/FaturamentoPage'
@@ -27,6 +28,7 @@ function Layout(){
         <Route path="/faturamento" element={<FaturamentoPage/>}/>
         <Route path="/csv" element={<CsvUploadPage/>}/>
       </Routes>
+      <Toaster position="bottom-right" toastOptions={{ style: { background: '#2d333b', color: '#fff' } }} />
     </div>
   )
 }
