@@ -3,14 +3,42 @@ import { useMutation } from '@tanstack/react-query'
 import { apiPost, apiPut } from '../api'
 import ConfirmModal from './ConfirmModal'
 
+const phoneMask = (value) => {
+    if (!value) return '';
+    let v = String(value).replace(/\D/g, '').substring(0, 11);
+    if (v.length > 2) v = `(${v.substring(0, 2)}) ${v.substring(2)}`;
+    if (v.length > 10) v = `${v.substring(0, 10)}-${v.substring(10)}`;
+    return v;
+};
+
+const currencyMask = (value) => {
+    if (value === null || value === undefined || String(value) === '') return '';
+    let v = String(value).replace(/\D/g, '');
+    if (v === '') return '';
+    v = (Number(v) / 100).toFixed(2);
+    v = v.replace('.', ',');
+    v = v.replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1.');
+    return `R$ ${v}`;
+};
+
 export default function ClienteModalForm({ onClose, onSuccess, clienteEmEdicao }) {
     const [isConfirmOpen, setIsConfirmOpen] = useState(false)
-    const [form, setForm] = useState(clienteEmEdicao || {
-        nome:'',
-        telefone:'',
-        endereco:'',
-        mensalista:false,
-        valorMensalidade:'' 
+    const [validationError, setValidationError] = useState('')
+    const [form, setForm] = useState(() => {
+        if (clienteEmEdicao) {
+            return {
+                ...clienteEmEdicao,
+                telefone: phoneMask(clienteEmEdicao.telefone),
+                valorMensalidade: clienteEmEdicao.valorMensalidade != null ? currencyMask(clienteEmEdicao.valorMensalidade.toFixed(2).replace('.', '')) : ''
+            };
+        }
+        return {
+            nome:'',
+            telefone:'',
+            endereco:'',
+            mensalista:false,
+            valorMensalidade:'' 
+        };
     })
 
     const create = useMutation({
@@ -33,17 +61,28 @@ export default function ClienteModalForm({ onClose, onSuccess, clienteEmEdicao }
     const isPending = create.isPending || update.isPending;
     const errorMsg = create.error?.message || update.error?.message;
 
+    const isNomeValid = !!form.nome?.trim();
+    const isTelefoneValid = !!form.telefone?.replace(/\D/g, '').trim();
+    const isValorValid = form.mensalista ? !!form.valorMensalidade : true;
+    const isValid = isNomeValid && isTelefoneValid && isValorValid;
+
     const handleSubmit = () => {
+        if (!isValid) {
+            setValidationError('Por favor, preencha todos os campos obrigatórios (*).');
+            return;
+        }
+        setValidationError('');
         setIsConfirmOpen(true);
     };
 
     const executeSave = () => {
+        setIsConfirmOpen(false);
         const payload = {
             nome: form.nome,
-            telefone: form.telefone,
+            telefone: form.telefone ? form.telefone.replace(/\D/g, '') : null,
             endereco: form.endereco,
             mensalista: form.mensalista,
-            valorMensalidade: form.valorMensalidade ? Number(form.valorMensalidade) : null
+            valorMensalidade: form.valorMensalidade ? Number(String(form.valorMensalidade).replace(/\D/g, '')) / 100 : null
         };
         
         if (isEdit) {
@@ -54,30 +93,33 @@ export default function ClienteModalForm({ onClose, onSuccess, clienteEmEdicao }
         create.mutate(payload);
     };
 
+    const displayError = errorMsg || validationError;
+
     return (
         <>
             <div className="modal-overlay">
                 <div className="modal-content">
                     <h3>{isEdit ? 'Editar cliente' : 'Novo cliente'}</h3>
-                    {errorMsg && <p style={{ color: '#d32f2f', margin: '0 0 16px 0', fontSize: '14px', padding: '8px', backgroundColor: '#ffebee', borderRadius: '4px' }}>{errorMsg}</p>}
+                    {displayError && <p style={{ color: '#d32f2f', margin: '0 0 16px 0', fontSize: '14px', padding: '8px', backgroundColor: '#ffebee', borderRadius: '4px' }}>{displayError}</p>}
                     <div className="grid grid-1">
-                        <input placeholder="Nome" value={form.nome} onChange={e=>setForm({...form, nome:e.target.value})}/>
-                        <input placeholder="Telefone" value={form.telefone} onChange={e=>setForm({...form, telefone:e.target.value})}/>
-                        <input placeholder="Endereço" value={form.endereco} onChange={e=>setForm({...form, endereco:e.target.value})}/>
+                        <input placeholder="Nome *" value={form.nome} maxLength={100} onChange={e=>setForm({...form, nome:e.target.value})}/>
+                        <input placeholder="Telefone *" value={form.telefone} maxLength={15} onChange={e=>setForm({...form, telefone:phoneMask(e.target.value)})}/>
+                        <input placeholder="Endereço" value={form.endereco} maxLength={400} onChange={e=>setForm({...form, endereco:e.target.value})}/>
                         <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: 8, whiteSpace: 'nowrap' }}>
                             <input 
                               type="checkbox" 
                               checked={form.mensalista} 
-                              onChange={e=>setForm({...form, mensalista:e.target.checked})}
+                              onChange={e=>setForm({...form, mensalista:e.target.checked, valorMensalidade: e.target.checked ? form.valorMensalidade : ''})}
                             /> 
                             Mensalista
                           </label>
                           <input 
-                            placeholder="Valor mensalidade" 
+                            placeholder={form.mensalista ? "Valor mensalidade *" : "Valor mensalidade"}
                             value={form.valorMensalidade} 
                             style={{ flex: 1 }} 
-                            onChange={e=>setForm({...form, valorMensalidade:e.target.value})}
+                            disabled={!form.mensalista}
+                            onChange={e=>setForm({...form, valorMensalidade:currencyMask(e.target.value)})}
                           />
                         </div>
                         <div style={{ display: 'flex', gap: '8px', marginTop: '16px', justifyContent: 'flex-end' }}>
