@@ -10,7 +10,6 @@ namespace Parking.Api.Services
         private readonly AppDbContext _db;
         public FaturamentoService(AppDbContext db) => _db = db;
 
-        // BUG proposital: usa dono ATUAL do veículo em vez do dono NA DATA DE CORTE
         public async Task<List<Fatura>> GerarAsync(string competencia, CancellationToken ct = default)
         {
             // competencia formato yyyy-MM
@@ -33,20 +32,43 @@ namespace Parking.Api.Services
                     .FirstOrDefaultAsync(f => f.ClienteId == cli.Id && f.Competencia == competencia, ct);
                 if (existente != null) continue; // idempotência simples
 
-                var veiculosAtuaisDoCliente = await _db.Veiculos
-                    .Where(v => v.ClienteId == cli.Id)
-                    .Select(v => v.Id)
+                var inicioMes = new DateTime(ano, mes, 1, 0, 0, 0, DateTimeKind.Utc);
+                var fimMes = new DateTime(ano, mes, ultimoDia, 23, 59, 59, DateTimeKind.Utc);
+                var totalDiasNoMes = (decimal)ultimoDia;
+
+                var historico = await _db.Set<VeiculoClienteHistorico>()
+                    .Where(h => h.ClienteId == cli.Id
+                             && h.DataInicio <= fimMes
+                             && (h.DataFim == null || h.DataFim >= inicioMes))
                     .ToListAsync(ct);
+
+                decimal valorTotal = 0m;
+                var veiculosFaturados = new HashSet<Guid>();
+
+                foreach (var h in historico)
+                {
+                    var inicioVigencia = h.DataInicio < inicioMes ? inicioMes : h.DataInicio;
+                    var fimVigencia = (h.DataFim == null || h.DataFim > fimMes) ? fimMes : h.DataFim.Value;
+
+                    var diasAtivos = (fimVigencia.Date - inicioVigencia.Date).Days + 1;
+                    if (diasAtivos < 0) diasAtivos = 0;
+
+                    var proporcao = diasAtivos / totalDiasNoMes;
+                    valorTotal += (cli.ValorMensalidade ?? 0m) * proporcao;
+                    veiculosFaturados.Add(h.VeiculoId);
+                }
+
+                valorTotal = Math.Round(valorTotal, 2);
 
                 var fat = new Fatura
                 {
                     Competencia = competencia,
                     ClienteId = cli.Id,
-                    Valor = cli.ValorMensalidade ?? 0m,
-                    Observacao = "BUG: usando dono atual do veículo"
+                    Valor = valorTotal,
+                    Observacao = $"Fatura calculada proporcionalmente para {veiculosFaturados.Count} veículo(s)."
                 };
 
-                foreach (var id in veiculosAtuaisDoCliente)
+                foreach (var id in veiculosFaturados)
                     fat.Veiculos.Add(new FaturaVeiculo { FaturaId = fat.Id, VeiculoId = id });
 
                 _db.Faturas.Add(fat);
