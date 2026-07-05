@@ -4,6 +4,9 @@ import { apiGet, apiPost, apiPut, apiDelete } from '../api'
 import toast from 'react-hot-toast'
 import VeiculoModalForm from '../components/VeiculoModalForm'
 import ConfirmModal from '../components/ConfirmModal'
+import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
 
 export default function VeiculosPage(){
   const qc = useQueryClient()
@@ -46,7 +49,9 @@ export default function VeiculosPage(){
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ margin: 0 }}>Veículos</h2>
-        <button onClick={() => setIsModalOpen(true)}>+ Novo Veículo</button>
+        <button onClick={() => setIsModalOpen(true)} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AddIcon fontSize="small" /> Novo Veículo
+        </button>
       </div>
 
       <div className="section">
@@ -75,7 +80,7 @@ export default function VeiculosPage(){
       <div className="section">
         {veiculos.isLoading? <p>Carregando...</p> : (
           <table>
-            <thead><tr><th>Placa</th><th>Modelo</th><th>Ano</th><th>ClienteId</th><th>Ações</th></tr></thead>
+            <thead><tr><th>Placa</th><th>Modelo</th><th>Ano</th><th>Id do Cliente</th><th style={{ textAlign: 'center' }}>Ações</th></tr></thead>
             <tbody>
               {veiculos.data?.map(v=>(
                 <tr key={v.id}>
@@ -83,9 +88,13 @@ export default function VeiculosPage(){
                   <td>{v.modelo}</td>
                   <td>{v.ano ?? '-'}</td>
                   <td>{v.clienteId}</td>
-                  <td style={{display:'flex', gap:8}}>
-                    <button className="btn-ghost" onClick={() => setVeiculoEmEdicao(v)}>Editar</button>
-                    <button className="btn-ghost" onClick={() => setVeiculoParaExcluir(v)}>Excluir</button>
+                  <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button className="btn-ghost" onClick={() => setVeiculoEmEdicao(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <EditIcon fontSize="small" /> Editar
+                    </button>
+                    <button className="btn-ghost" onClick={() => setVeiculoParaExcluir(v)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
+                      <DeleteIcon fontSize="small" /> Excluir
+                    </button>
                   </td>
                 </tr>
               ))}

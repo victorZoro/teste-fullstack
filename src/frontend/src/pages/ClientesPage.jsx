@@ -4,6 +4,17 @@ import { apiGet, apiPost, apiDelete } from '../api'
 import toast from 'react-hot-toast'
 import ClienteModalForm from '../components/ClienteModalForm.jsx'
 import ConfirmModal from '../components/ConfirmModal.jsx'
+import AddIcon from '@mui/icons-material/Add'
+import EditIcon from '@mui/icons-material/Edit'
+import DeleteIcon from '@mui/icons-material/Delete'
+
+const formatarTelefone = (tel) => {
+  if (!tel) return '';
+  const d = String(tel).replace(/\D/g, '');
+  if (d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if (d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return tel;
+}
 
 export default function ClientesPage(){
   const qc = useQueryClient()
@@ -41,7 +52,9 @@ export default function ClientesPage(){
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
         <h2 style={{ margin: 0 }}>Clientes</h2>
-        <button onClick={() => { setClienteEmEdicao(null); setIsModalOpen(true); }}>Novo Cliente</button>
+        <button onClick={() => { setClienteEmEdicao(null); setIsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <AddIcon fontSize="small" /> Novo Cliente
+        </button>
       </div>
 
       <div className="section">
@@ -68,16 +81,20 @@ export default function ClientesPage(){
       <div className="section">
         {q.isLoading? <p>Carregando...</p> : (
           <table>
-            <thead><tr><th>Nome</th><th>Telefone</th><th>Mensalista</th><th></th></tr></thead>
+            <thead><tr><th>Nome</th><th>Telefone</th><th>Mensalista</th><th style={{ textAlign: 'center' }}>Ações</th></tr></thead>
             <tbody>
               {q.data.itens.map(c=>(
                 <tr key={c.id}>
                   <td>{c.nome}</td>
-                  <td>{c.telefone}</td>
+                  <td>{formatarTelefone(c.telefone)}</td>
                   <td>{c.mensalista? 'Sim':'Não'}</td>
-                  <td style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-ghost" onClick={() => { setClienteEmEdicao(c); setIsModalOpen(true); }}>Editar</button>
-                    <button className="btn-ghost" onClick={() => setClienteParaExcluir(c)}>Excluir</button>
+                  <td style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                    <button className="btn-ghost" onClick={() => { setClienteEmEdicao(c); setIsModalOpen(true); }} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <EditIcon fontSize="small" /> Editar
+                    </button>
+                    <button className="btn-ghost" onClick={() => setClienteParaExcluir(c)} style={{ display: 'flex', alignItems: 'center', gap: '4px', color: 'red' }}>
+                      <DeleteIcon fontSize="small" /> Excluir
+                    </button>
                   </td>
                 </tr>
               ))}
